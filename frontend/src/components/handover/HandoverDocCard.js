@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/services/apiClient";
+import { downloadFile, blobErrorDetail } from "@/utils/fileDownload";
 import { formatDateWIB } from "@/utils/formatters";
 import { P50 } from "@/constants/testIds";
 
 const MIN_REASON = 10;
-const API = process.env.REACT_APP_BACKEND_URL;
 
 /**
  * Kartu BAST yang sudah terbit + tombol PDF & pembatalan (Fase 50A).
@@ -29,11 +29,28 @@ export default function HandoverDocCard({ doc, onChanged }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   useEffect(() => { if (open) setReason(""); }, [open]);
 
   if (!doc) return null;
   const cancelled = doc.state === "cancelled";
   const reasonOk = reason.trim().length >= MIN_REASON;
+
+  // PDF diambil lewat pemanggil API biasa (membawa token), bukan tautan mentah: tautan
+  // mentah hanya berhasil selama kuki sesi masih ada, jadi pemakai bisa menerima halaman
+  // "Tidak terautentikasi" tanpa penjelasan. Galat pun dibaca dari jawaban blob supaya
+  // sebabnya jujur.
+  const openPdf = async () => {
+    setPdfBusy(true);
+    try {
+      await downloadFile(`/handover/${doc.id}/pdf`, {
+        fallbackName: `${String(doc.number || "BAST").replace(/\//g, "-")}.pdf`,
+        open: true,
+      });
+    } catch (e) {
+      toast.error(await blobErrorDetail(e, "Gagal membuka PDF berita acara."));
+    } finally { setPdfBusy(false); }
+  };
 
   const cancel = async () => {
     setBusy(true);
@@ -77,11 +94,11 @@ export default function HandoverDocCard({ doc, onChanged }) {
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href={`${API}/api/handover/${doc.id}/pdf`} target="_blank" rel="noreferrer"
-            data-testid={P50.handoverPdfBtn}
-            className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-[13px] font-medium hover:bg-secondary">
-            <FileText className="h-3.5 w-3.5" /> Buka PDF
-          </a>
+          <Button size="sm" variant="outline" data-testid={P50.handoverPdfBtn}
+            disabled={pdfBusy} onClick={openPdf}>
+            <FileText className="mr-1.5 h-3.5 w-3.5" />
+            {pdfBusy ? "Menyiapkan…" : "Buka PDF"}
+          </Button>
           {!cancelled && can("handover", "cancel") ? (
             <Button size="sm" variant="outline" data-testid={P50.handoverCancelBtn}
               onClick={() => setOpen(true)}>

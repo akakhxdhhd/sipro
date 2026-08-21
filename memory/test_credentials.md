@@ -216,3 +216,54 @@ bash scripts/run_all_gates.sh               # 33 gates
 - Peran yang dibutuhkan: `finlead@sipro.co.id` (boleh menerobos tutup bulan),
   `owner@sipro.co.id` (tutup/buka tahun buku, buka periode), `finance@sipro.co.id`
   (pajak: terbit/ganti/batal/ekspor), `sales@sipro.co.id` (pembanding 403).
+
+## Fase 50 — Serah Terima (BAST), Garansi & Antrean Perangkat (yang DIUJI, jangan dianggap bug)
+- **Serah terima DITAHAN itu benar.** `/units/{id}` tab **Serah Terima & Garansi** menolak
+  menerbitkan BAST selama masih ada temuan punch terbuka, progres belum selesai, inspeksi
+  serah terima belum lolos, kewajiban pembayaran belum beres, atau dokumen wajib belum
+  terverifikasi. Pesannya menyebut sebab satu per satu + tautan halaman sumbernya.
+- **Yang boleh MENEROBOS bukan yang boleh MENERBITKAN.** `pm@` & `finance@` boleh menerbitkan
+  (`handover:create`); menerobos daftar periksa hanya `finlead@`/`owner@`/`superadmin@`
+  (`handover:override`) dan wajib alasan **≥10 huruf**. `pm@` mendapat **403** saat mencoba
+  menerobos — itu pemisahan tugas, bukan cacat.
+- **Pembatalan BAST hanya `handover:cancel`** (`finlead@`/`owner@`/`superadmin@`); `finance@`
+  sengaja **403**. Pembatalan **DITOLAK** selama masih ada klaim garansi berjalan, dan
+  dokumennya TIDAK dihapus (status "Dibatalkan" + alasan + siapa).
+- **Penerbitan BAST idempoten.** Menekan "Terbitkan BAST" dua kali (atau kiriman antrean
+  diputar ulang) TIDAK membuat dokumen kedua — nomor lamanya dipakai kembali.
+- **Klaim garansi yang lewat masa TETAP tercatat** berstatus *Ditolak beralasan* dengan
+  tanggal habisnya. Itu jawaban tertulis untuk pembeli, bukan data sampah.
+- **Pemisahan tugas klaim garansi:** pengaju (`manager@`/`sales@`/CS, `warranty:create`)
+  **403** di keputusan klaim; pelaksana (`site@`, `warranty:update`) **403** di pemeriksaan
+  mutu; dan **pemeriksa tidak boleh orang yang mengerjakan** (dijaga di data — `pm@` yang
+  baru saja menyelesaikan perbaikan ditolak 400 saat mencoba meluluskannya sendiri).
+- **"Selesai" wajib bukti foto.** Menyatakan perbaikan selesai tanpa foto ditolak (dijaga di
+  kontrak permintaan DAN mesin). Penutupan klaim butuh **pengakuan pembeli** (`ack_by`).
+- **Masa garansi per bagian dibaca dari Pusat Konfigurasi** (`warranty.struktur_months` 120,
+  `atap_plafon` 12, `dinding_lantai` 12, `plumbing` 6, `listrik` 6, `kusen` 6, `finishing` 3;
+  ambang "hampir habis" 30 hari). Mengubah setelan berlaku untuk BAST yang diterbitkan
+  SESUDAHNYA — dokumen lama tetap memakai masa yang tercetak di dalamnya.
+- **Rumah yang belum diserahterimakan menulis "belum ada data"**, bukan 0 bulan garansi; rekap
+  klaim tanpa data menulis rata-rata hari "belum ada datanya", bukan 0 hari.
+- **Antrean perangkat (Fase 50B):** absensi, buku harian, temuan/status punch, klaim garansi,
+  dan bukti perbaikan semuanya membawa `client_ref`. Mengirim ulang penanda yang sama dijawab
+  `replay` (bukan data kedua) — jadi "absensi tercatat sekali padahal ditekan dua kali" adalah
+  perilaku BENAR. Antrean bisa dibuka dari spanduk jaringan di **halaman mana saja**.
+- **Data demo Fase 50** (`seed_phase50.py`, `demo_batch="fase50"`): unit **A-06** sengaja
+  dibiarkan *siap BAST* (bisa dicoba manusia), unit **B-01** sudah punya `BAST/2025/0001`
+  (bertanggal lampau) dengan 2 klaim garansi — satu berjalan, satu ditolak karena lewat masa.
+  Bila A-06 sudah diserahkan seseorang, seed TIDAK mengembalikannya: jalankan
+  `bash scripts/seed_reset.sh` bila butuh keadaan awal lagi.
+- **Bahan uji gate/POC bertanda `gate50`** (proyek "Proyek Gate 39/40", unit `G39-*`/`G40-*`)
+  dibuat & dibuang otomatis. Bila terlihat di layar berarti ada run yang mati di tengah —
+  jalankan gate itu sekali lagi.
+
+## Guardrail Fase 50 (cara membuktikan cepat)
+```
+python3 poc/poc_50.py                        # POC core 50A
+python3 scripts/verify_handover_warranty.py  # gate ke-39 (43 pemeriksaan)
+python3 scripts/verify_offline_queue.py      # gate ke-40 (14 pemeriksaan)
+python3 scripts/mutasi_50.py --check         # pola 37 mutasi masih ada di kode (cepat)
+python3 scripts/mutasi_50.py                 # uji-mutasi penuh (~45 menit, backend reload)
+bash scripts/run_all_gates.sh                # 40 gates
+```

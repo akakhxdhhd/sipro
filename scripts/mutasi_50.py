@@ -279,11 +279,33 @@ def write(rel: str, src: str):
 
 
 def run_gate(gate: str) -> bool:
-    log = pathlib.Path(f"/tmp/mut50_{gate}.log")
+    # Log ditaruh di /app (BUKAN /tmp): /tmp bisa dibersihkan sistem di tengah jalan dan
+    # jejak mutasi ikut hilang justru saat paling dibutuhkan.
+    logdir = ROOT / "memory" / "gatelogs"
+    logdir.mkdir(parents=True, exist_ok=True)
+    log = logdir / f"mut50_{gate}.log"
     with log.open("w", encoding="utf-8") as fh:
         p = subprocess.run([sys.executable, str(ROOT / "scripts" / gate)],
                            stdout=fh, stderr=subprocess.STDOUT, cwd=str(ROOT))
     return p.returncode == 0
+
+
+def selected(mutations):
+    """Saring mutasi lewat `--only M05,M07` atau `--from M28` (lanjutkan run yang terputus)."""
+    only = None
+    start = None
+    for arg in sys.argv[1:]:
+        if arg.startswith("--only="):
+            only = {x.strip().upper() for x in arg.split("=", 1)[1].split(",") if x.strip()}
+        elif arg.startswith("--from="):
+            start = arg.split("=", 1)[1].strip().upper()
+    rows = list(mutations)
+    if only:
+        rows = [m for m in rows if m[0].split()[0].upper() in only]
+    if start:
+        idx = next((i for i, m in enumerate(rows) if m[0].split()[0].upper() == start), 0)
+        rows = rows[idx:]
+    return rows
 
 
 def apply_patches(patches) -> dict:
@@ -352,7 +374,10 @@ def main() -> int:
             return 1
 
     caught, escaped, skipped = [], [], []
-    for name, gate, patches in MUTATIONS:
+    todo = selected(MUTATIONS)
+    print(f"\n{len(todo)} mutasi kode akan dijalankan"
+          f"{' (saringan --only/--from aktif)' if len(todo) != len(MUTATIONS) else ''}.")
+    for name, gate, patches in todo:
         try:
             backup = apply_patches(patches)
         except RuntimeError as e:
@@ -372,7 +397,7 @@ def main() -> int:
             caught.append(name)
             print(f"  TERTANGKAP {name}")
 
-    for name, gate, (coll, iname, keys) in DB_MUTATIONS:
+    for name, gate, (coll, iname, keys) in selected(DB_MUTATIONS):
         try:
             drop_index(coll, iname)
         except Exception as e:  # noqa: BLE001 — index tidak ada = mutasi tidak bisa diuji

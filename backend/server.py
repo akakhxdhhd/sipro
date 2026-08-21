@@ -230,6 +230,15 @@ async def lifespan(app: FastAPI):
     # menutup klaim & tidak memeriksa mutu (keputusan manusia). Idempoten.
     from seed_phase50 import seed_phase50
     await seed_phase50(ORG_ID)
+    # Fase 41 (SAPUAN TERAKHIR) — jam tahap untuk dokumen yang dibuat seed SESUDAH panggilan
+    # reconcile di atas. Cacat nyata yang ditemukan saat penutupan Fase 50: `reconcile()`
+    # dipanggil tepat setelah seed Fase 40, sehingga setiap lead/deal/pelanggan yang lahir
+    # dari seed Fase 42..50 TIDAK pernah punya `stage_entered_at` — laporan umur tahap
+    # kehilangan barisnya dan gate 24 (`verify_41.py`) merah dengan benar. Idempoten.
+    filled_late = await clock.reconcile(org_id=ORG_ID)
+    if any(filled_late.values()):
+        logger.info("Jam tahap (Fase 41) disegarkan setelah seluruh seed: %s",
+                    {k: v for k, v in filled_late.items() if v})
     start_scheduler()
     yield
     stop_scheduler()

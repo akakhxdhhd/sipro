@@ -67,12 +67,29 @@ def _project_workday(headers):
     return {"project_id": project_id, "work_date": datetime.now().strftime("%Y-%m-%d")}
 
 
+# Fase 50A: tiga route serah terima/garansi WAJIB menyebut rumah atau komplain yang dimaksud.
+# Tanpa itu jawabannya akan mengarang daftar periksa/masa garansi milik rumah mana pun, jadi
+# 400 di situ adalah validasi yang BENAR — sweep menyediakan id NYATA supaya yang diuji adalah
+# jawabannya (daftar periksa & masa garansi), bukan pesan validasinya.
+def _handover_unit(headers):
+    unit_id = _first_id(headers, "/units?limit=1")
+    return {"unit_id": unit_id} if unit_id else None
+
+
+def _complaint_probe(headers):
+    cid = _first_id(headers, "/complaints?limit=1")
+    return {"complaint_id": cid} if cid else None
+
+
 QUERY_RESOLVERS = {
     "/api/doc/submissions": _lead_entity,
     "/api/doc/matrix": _lead_entity,
     "/api/settings/effective": _setting_keys,
     "/api/permits/coverage": _unit_object,
     "/api/labor/attendance/diary-check": _project_workday,
+    "/api/handover/check": _handover_unit,
+    "/api/handover/warranty/unit": _handover_unit,
+    "/api/handover/warranty/for-complaint": _complaint_probe,
 }
 # Endpoint streaming (SSE) yang TIDAK boleh disweep (koneksi long-lived -> akan timeout).
 SKIP_STREAMING = {"/api/notifications/stream"}

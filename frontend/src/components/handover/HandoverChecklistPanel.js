@@ -1,12 +1,13 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, CircleAlert, CircleHelp, ExternalLink, KeyRound, RefreshCw } from "lucide-react";
+import { CheckCircle2, CircleAlert, CircleHelp, ExternalLink, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingCards, ErrorState } from "@/components/patterns/StateViews";
 import HandoverIssueDialog from "@/components/handover/HandoverIssueDialog";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/services/apiClient";
+import { newRef } from "@/services/offlineSync";
 import { P50 } from "@/constants/testIds";
 
 const PILL = {
@@ -34,6 +35,9 @@ export default function HandoverChecklistPanel({ unitId, unitCode, onChanged }) 
   const [error, setError] = useState("");
   const [hold, setHold] = useState(null);
   const [dialog, setDialog] = useState(null);
+  // Penanda kiriman dibuat SEKALI per dialog: kalau sinyal mati di tengah penerbitan dan
+  // pemakai menekan lagi, server memutar ulang dokumen lama alih-alih menerbitkan BAST kedua.
+  const clientRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -60,9 +64,12 @@ export default function HandoverChecklistPanel({ unitId, unitCode, onChanged }) 
   const issue = async (payload) => {
     setHold(null);
     try {
-      const res = await api.post("/handover/issue", { unit_id: unitId, ...payload });
+      const res = await api.post("/handover/issue", {
+        unit_id: unitId, client_ref: clientRef.current, ...payload,
+      });
       toast.success(res.data?.message || "Serah terima tercatat.");
       setDialog(null);
+      clientRef.current = null;
       await load();
       onChanged?.();
       return true;
@@ -92,7 +99,10 @@ export default function HandoverChecklistPanel({ unitId, unitCode, onChanged }) 
           </Button>
           {canIssue && !already ? (
             <Button size="sm" data-testid={P50.handoverIssueBtn}
-              onClick={() => setDialog({ override: blocking.length > 0 })}>
+              onClick={() => {
+                clientRef.current = clientRef.current || newRef();
+                setDialog({ override: blocking.length > 0 });
+              }}>
               <KeyRound className="mr-1.5 h-3.5 w-3.5" />
               {blocking.length ? "Serahkan dengan terobosan" : "Terbitkan BAST"}
             </Button>
@@ -147,6 +157,45 @@ export default function HandoverChecklistPanel({ unitId, unitCode, onChanged }) 
           Penerbitan berita acara serah terima dilakukan tim proyek atau keuangan. Anda tetap
           bisa melihat daftar periksanya di sini.
         </p>
+      ) : null}
+
+      {/* Masa garansi yang AKAN berlaku begitu kunci diserahkan. Ditampilkan SEBELUM
+          penerbitan supaya janji ke pembeli dibaca dari Pusat Konfigurasi — bukan diingat
+          orang. Angkanya sama dengan yang tercetak di BAST nanti. */}
+      {(data.warranty_plan || []).length ? (
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <ShieldCheck className="h-4 w-4 text-primary" /> Masa garansi yang akan berlaku
+          </p>
+          <div className="overflow-x-auto rounded-xl border bg-card">
+            <table className="w-full text-[13px]">
+              <thead className="bg-secondary/60 text-left text-[12px] text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">Bagian</th>
+                  <th className="px-3 py-2">Lama</th>
+                  <th className="px-3 py-2">Mulai dihitung</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.warranty_plan || []).map((p) => (
+                  <tr key={p.category} data-testid={P50.warrantyPlanRow} className="border-t">
+                    <td className="px-3 py-2 font-medium">{p.label}</td>
+                    <td className="px-3 py-2 tabular-nums">
+                      {p.months ? `${p.months} bulan` : "tidak digaransi"}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      Tanggal serah terima
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Lama garansi diatur di Pusat Konfigurasi → Serah Terima &amp; Garansi, jadi
+            perubahannya berjejak dan berlaku untuk BAST yang diterbitkan sesudahnya.
+          </p>
+        </div>
       ) : null}
 
       <HandoverIssueDialog open={!!dialog} unitCode={unitCode} blocking={blocking}

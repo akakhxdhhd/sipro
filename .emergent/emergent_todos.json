@@ -1,38 +1,38 @@
 [
   {
-    "content": "Setup environment: copy repo to /app, install backend+frontend deps, seed DB, services up",
+    "content": "Setup environment: repo restored in /app, deps installed, DB seeded, services up",
     "status": "completed"
   },
   {
-    "content": "Phase 5a: Run Gate 39 (verify_handover_warranty.py) and fix until GREEN",
+    "content": "Phase 5a: Gate 39 GREEN (43 checks, H7f/H7g hardened)",
     "status": "completed"
   },
   {
-    "content": "Phase 5b: Run Gate 40 (verify_offline_queue.py) and fix until GREEN",
+    "content": "Phase 5b: Gate 40 GREEN (14 checks, Q6b/Q6c hardened)",
     "status": "completed"
   },
   {
-    "content": "Phase 5c: Write scripts/mutasi_50.py (37 mutations incl. DB index) and make all CAUGHT",
+    "content": "Phase 5c: mutasi_50.py — 37 mutations ALL CAUGHT, baseline green",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 5d: 40 gates registered + OVERALL PASS; fixed 6 failing gates (seed/gate defects)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 5e: Fase 50 frontend gaps fixed; visual verification of handover tab/board/portal pending",
     "status": "in_progress"
   },
   {
-    "content": "Phase 5d: Register gate 39+40 in run_all_gates.sh, run full suite (40 gates) PASS",
-    "status": "pending"
-  },
-  {
-    "content": "Phase 5e: Verify Fase 50 frontend UI end-to-end (handover tab, warranty board, portal, offline queue panel)",
-    "status": "pending"
-  },
-  {
-    "content": "Phase 5f: Docs 44_HANDOVER_WARRANTY_SPEC.md + 45_OFFLINE_PWA_SPEC.md, update CODEBASE_MAP/test_result/plan/test_credentials",
-    "status": "pending"
+    "content": "Phase 5f: Docs 44+45 + CODEBASE_MAP + test_credentials done; test_result.md & plan.md remaining",
+    "status": "in_progress"
   },
   {
     "content": "Phase 5g: E2E multi-role testing via testing_agent_v3 + fix all findings",
     "status": "pending"
   },
   {
-    "content": "Phase 5h: Local commit of Fase 50 closure",
+    "content": "Phase 5h: Final local commit of Fase 50 closure",
     "status": "pending"
   }
 ]

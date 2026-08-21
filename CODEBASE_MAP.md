@@ -1143,3 +1143,97 @@ Spec: `docs/v2/43_CLOSING_TAX_COMPLIANCE_SPEC.md`
 
 **Status:** `python3 poc/poc_49.py` → PASS (96 pemeriksaan); gate 37 (19 pemeriksaan) & gate 38
 (23 pemeriksaan) HIJAU; `scripts/run_all_gates.sh` → **38 gates**.
+
+## FASE 50 — Serah Terima Unit (BAST), Masa Garansi, Klaim Pasca-Huni & Antrean Perangkat Terpadu
+
+Spec: `docs/v2/44_HANDOVER_WARRANTY_SPEC.md` (50A) + `docs/v2/45_OFFLINE_PWA_SPEC.md` (50B)
+
+### Pemulihan lingkungan (ULANGI setiap kali repo di-clone ke container baru)
+1. `backend/.env` WAJIB berisi (selain `MONGO_URL`/`DB_NAME` milik container):
+   `JWT_SECRET="<acak>"`, `DEFAULT_ORG_ID="org-sipro"` (TANDA HUBUNG), `DEFAULT_ORG_NAME`,
+   `PORTAL_MASTER_OTP="000000"`. Tanpa `JWT_SECRET` setiap login mati 500.
+2. `requirements.txt` hasil `pip freeze` container lain bisa BENTROK
+   (`emergentintegrations` vs `litellm`). Cara aman: bandingkan dengan `pip list` container
+   ini lalu pasang HANYA yang belum ada — pada sesi ini yang kurang hanya
+   `APScheduler==3.11.3`, `reportlab==5.0.0`, `tzlocal==5.4.4`.
+3. `yarn install` di `frontend/`, lalu `supervisorctl restart backend frontend`.
+   Seed penuh (Fase 16..50) berjalan sendiri di lifespan saat DB kosong.
+
+### 50A — Serah terima & garansi
+| File | Peran |
+|---|---|
+| `backend/handover_engine.py` | `handover_check()` (6 pemeriksaan: pembangunan, punch terbuka, inspeksi serah terima, pelunasan, dokumen wajib, sudah-terbit), `issue()` (**HandoverHold** → 409 bila menahan; terobosan butuh `handover:override` + alasan ≥10 → potret checklist + `override_items[]` + audit + TUGAS tinjauan; **idempoten** per unit & `client_ref`), `cancel()` (beralasan, ditahan bila ada klaim berjalan, status rumah dipulihkan), `warranty_plan()`/`warranty_rows()`/`warranty_status()` (masa per bagian dari Pusat Konfigurasi, `add_months` kalender), `pdf_bytes()` |
+| `backend/warranty_engine.py` | `create_claim()` (klaim lewat masa garansi TETAP tercatat + sebab + tanggal habis), `decide()` (terima → lahir `punch_items` `source=warranty_claim` + tugas; tolak → alasan ≥10 + sebab SSOT), `complete()` (**wajib bukti foto**), `verify()` (pemeriksa ≠ pelaksana, dijaga di DATA), `close()` (pengakuan pembeli + punch ikut ditutup), `report()`/`warranty_board()` (tie-out + honest-null) |
+| `backend/routers/handover_router.py` | `/handover/check|issue|{id}|{id}/pdf|{id}/cancel`, `/handover/warranty/plan|unit|board|for-complaint`, `/handover/claims*` (+`/report`). Rute ber-parameter DITARUH PALING BAWAH supaya `/claims` tidak tertangkap sebagai id |
+| `backend/models_p50.py` | kontrak permintaan (alasan ≥10 huruf, enum dari SSOT, `photo_file_ids` min 1, `PortalWarrantyClaim` memaksa `source=portal_pembeli`) |
+| `backend/reference_p50.py` | SSOT `handover_check_item/state`, `handover_state`, `warranty_category/state`, `warranty_claim_state/source`, `warranty_reject_reason` |
+| `backend/routers/portal_router.py` (diubah) | `GET /portal/warranty`, `POST/GET /portal/warranty/claims` (pembeli mengajukan sendiri + WA jawaban) |
+| `backend/settings_store.py` | grup **Serah Terima & Garansi**: `warranty.*_months` (struktur 120 … finishing 3), `warranty.expiring_days`, `warranty.claim_sla_days`, `warranty.fix_days` |
+| `backend/seed_phase50.py` | demo idempoten: **A-06 siap BAST** (bisa dicoba manusia), **B-01 sudah BAST 400 hari lalu** (`BAST/2025/0001`) + 2 klaim (satu berjalan, satu ditolak karena lewat masa). Pelunasan lewat `finance_engine` sungguhan supaya subledger tetap tie-out |
+| `frontend/src/components/handover/*` | `UnitHandoverTab` (tab di Unit 360), `HandoverChecklistPanel` (+ **pratinjau masa garansi yang akan berlaku**), `HandoverIssueDialog`, `HandoverDocCard` (PDF ber-token + pembatalan), `WarrantyRows`, `WarrantyClaimList`, `WarrantyClaimDialogs`, `WarrantyBoardPanel` (tab **Garansi** di `/construction`) |
+| `frontend/src/components/portal/panels/WarrantyPanel.js`, `components/complaints/ComplaintDetailSheet.js` | portal pembeli + pintu "Jadikan klaim garansi" dari komplain CS |
+| `frontend/src/constants/testIds/p50.js` | testId seluruh permukaan Fase 50 |
+
+### 50B — Antrean perangkat terpadu (tidak hilang, tidak dobel)
+| File | Peran |
+|---|---|
+| `backend/offline_intake.py` | kunci idempotensi `(org_id, kind, client_ref)`: `begin()` (new/replay/inflight, kunci BASI boleh diambil ulang), `commit()` (menyimpan ALAMAT dokumen hasil), `rollback()` (kiriman DITOLAK melepas kunci), `stored()` |
+| `backend/routers/labor_router.py`, `routers/field_router.py`, `routers/handover_router.py` (diubah) | `client_ref` pada absensi, buku harian, punch (buat & ubah status), klaim garansi, bukti perbaikan, dan penerbitan BAST |
+| `backend/indexes.py` | `uq_offline_intake_ref` (keunikan penanda dijaga DATABASE, bukan hanya aplikasi) + `uq_handover_number`, `uq_warranty_claim_number` |
+| `backend/reference_p35.py` (diubah) | SSOT `offline_queue_kind` ditambah `attendance_submit`, `field_diary`, `punch_create`, `punch_status`, `warranty_claim`, `warranty_fix`, `handover_issue` |
+| `frontend/src/services/offlineSync.js` | `KINDS` (endpoint + nama field foto per jenis), `submitOrQueue()` satu pintu, penanda dipakai juga saat online, foto lokal ditukar id nyata (tidak dobel), 4xx → `rejected` + alasan asli |
+| `frontend/src/components/patterns/OfflineBanner.js` (AppShell) | antrean bisa dibuka dari **halaman mana saja**; panel juga tertanam di `/field`, Papan Mandor, tab Lapangan unit, dan tab Serah Terima & Garansi |
+
+### Guardrail Fase 50
+| Berkas | Isi |
+|---|---|
+| `scripts/verify_handover_warranty.py` | **GATE 39** — 43 pemeriksaan (H1..H10) |
+| `scripts/verify_offline_queue.py` | **GATE 40** — 14 pemeriksaan (Q1..Q8) |
+| `scripts/mutasi_50.py` | **37 mutasi** (36 kode + 1 **mutasi DATABASE**: index unik penanda dijatuhkan) · `--check` cepat · `--only=`/`--from=` untuk melanjutkan run yang terputus |
+| `poc/poc_50.py`, `scripts/_fixture50.py` | POC inti (81 pemeriksaan) + bahan uji `gate50` yang dibuang bersih |
+
+### Cacat NYATA yang ditemukan & diperbaiki saat penutupan Fase 50
+1. **Dua pemeriksaan gate BARU ternyata tidak bergigi.** `H7f` menerima 200 **atau** 400 untuk
+   pembatalan BAST (jadi tidak menguji apa pun), dan `Q6b` hanya memeriksa "ada index unik apa
+   pun". Sekarang: pembatalan **wajib DITOLAK** selama klaim garansi berjalan lalu boleh
+   setelah klaim dituntaskan, dan keunikan penanda diuji pada **key spec** yang tepat plus
+   sisipan kembar langsung ke database (`Q6c`).
+2. **`seed_phase50` menulis `deals.status = "sold"`** — nilai di LUAR Kamus Data
+   (`reserved/booked/completed/cancelled`) — dan tidak mengisi `units.booked_by_deal`,
+   sehingga gate invarian bisnis benar-benar melaporkan "unit A-06 terjual tanpa deal" dan
+   nilainya hilang dari metrik penjualan. Diperbaiki + ada `_repair_legacy()` idempoten untuk
+   database yang sudah ter-seed versi lama.
+3. **Pelanggan demo Fase 50 tanpa NIK & tanpa `kyc_status`.** NIK adalah natural key pelanggan
+   (dua baris `nik=null` dilaporkan duplikat oleh audit forensik), dan tanpa `kyc_status`
+   pelanggan itu tidak punya tahap sehingga hilang dari laporan umur tahap.
+4. **`clock.reconcile()` (jam tahap Fase 41) dipanggil TERLALU DINI** — tepat setelah seed
+   Fase 40 — sehingga semua dokumen yang lahir dari seed Fase 42..50 tidak pernah punya
+   `stage_entered_at`. Sekarang ada sapuan terakhir setelah seluruh seed.
+5. **Gate menyimpan kamusnya sendiri.** `verify_masterplan.py` memakai daftar
+   `construction_status` yang diketik ulang dan ketinggalan `ready_handover` (nilai SSOT yang
+   dipakai inspeksi serah terima). Sekarang gate membaca kamus dari `/api/reference`.
+6. **Pembanding metrik salah periode.** `verify_analytics.py` membandingkan metrik lead yang
+   DIBATASI periode dengan hitungan SELURUH koleksi; begitu ada satu lead di luar periode
+   (pembeli demo yang rumahnya diserahkan 400 hari lalu) gate merah tanpa ada kesalahan
+   metrik. Sekarang hitung ulang memakai saringan tanggal yang sama.
+7. **Tiga endpoint Fase 50A tidak terdaftar di sweep endpoint** (butuh `unit_id`/
+   `complaint_id`), sehingga 400-validasi-benar dihitung sebagai kerusakan. Resolver id NYATA
+   ditambahkan.
+8. **`offline_intake` tampak "koleksi mati"** di audit forensik karena ditulis lewat
+   `db[COLL]` (dinamis, tak terlihat analisis statis). Akses diubah menjadi
+   `db.offline_intake` + koleksinya didaftarkan sebagai catatan mekanis `DERIVED_BY_DESIGN`.
+9. **Cacat UI Fase 50A:** (a) `warranty_plan` dari `/handover/check` tidak pernah ditampilkan —
+   padahal itu janji masa garansi yang dibaca sebelum kunci diserahkan; (b) tombol PDF BAST
+   memakai tautan mentah `<a href>` tanpa token (bergantung kuki, galatnya tidak terbaca) —
+   sekarang memakai `downloadFile()` seperti seluruh aplikasi; (c) penerbitan BAST dari layar
+   tidak mengirim `client_ref`, jadi klik ganda saat sinyal buruk bergantung pada idempotensi
+   mesin saja — sekarang penanda dibuat sekali per dialog.
+10. **Perangkat uji rapuh:** `mutasi_50.py` & `run_all_gates.sh` menulis log ke `/tmp` yang
+    bisa dibersihkan sistem di tengah run panjang (run pertama mati di M28 dan meninggalkan
+    kode TERMUTASI). Log sekarang di `memory/gatelogs/`, dan mutasi bisa dilanjutkan dengan
+    `--from=`.
+
+**Status:** `poc/poc_50.py` → PASS (81 pemeriksaan); gate 39 (43) & gate 40 (14) HIJAU;
+`python3 scripts/mutasi_50.py` → **37 mutasi SEMUA TERTANGKAP** (M01–M27 lalu M28–M37 setelah
+run pertama dibunuh sistem), baseline hijau kembali; `bash scripts/run_all_gates.sh` →
+**OVERALL PASS (40 gates)**.

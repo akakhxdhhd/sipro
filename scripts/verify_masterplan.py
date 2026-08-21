@@ -46,6 +46,19 @@ def main():
     pid = plist[0]["id"]
 
     print("\n1. Integritas hierarki (data nyata di DB)")
+    # Kamus status DIAMBIL DARI SSOT (`/api/reference`), bukan diketik ulang di gate.
+    # Cacat nyata yang ditemukan saat penutupan Fase 50: daftar `construction_status` di gate
+    # ini ketinggalan nilai `ready_handover` (dipakai sejak inspeksi serah terima Fase 50A),
+    # sehingga gate melaporkan "status pembangunan tidak valid" untuk nilai yang JELAS ada di
+    # Kamus Data. Gate yang menyimpan kamusnya sendiri akan selalu ketinggalan.
+    reg = requests.get(f"{BASE}/reference", headers=h, timeout=20).json().get("data") or {}
+    def vocab(group):
+        return [o["value"] for o in ((reg.get(group) or {}).get("options") or [])]
+    unit_status_ssot = vocab("unit_status")
+    build_status_ssot = vocab("construction_status")
+    check("kamus status unit & pembangunan terbaca dari SSOT",
+          bool(unit_status_ssot) and bool(build_status_ssot),
+          f"{len(unit_status_ssot)} status jual · {len(build_status_ssot)} status bangun")
     total_units = DB.units.count_documents({})
     orphan_cluster = DB.units.count_documents({"$or": [{"cluster_id": None},
                                                        {"cluster_id": {"$exists": False}}]})
@@ -55,11 +68,9 @@ def main():
           f"{orphan_cluster} dari {total_units} unit tanpa cluster")
     check("semua unit punya blok", orphan_block == 0,
           f"{orphan_block} dari {total_units} unit tanpa blok")
-    bad_status = DB.units.count_documents(
-        {"status": {"$nin": ["available", "reserved", "booked", "sold", "handed_over", "blocked"]}})
+    bad_status = DB.units.count_documents({"status": {"$nin": unit_status_ssot}})
     bad_build = DB.units.count_documents(
-        {"construction_status": {"$nin": ["not_started", "scheduled", "in_progress", "qc_hold",
-                                          "done", "on_hold"]}})
+        {"construction_status": {"$nin": build_status_ssot + [None]}})
     check("status penjualan semua valid SSOT", bad_status == 0, f"{bad_status} tidak valid")
     check("status pembangunan semua valid SSOT", bad_build == 0, f"{bad_build} tidak valid")
 

@@ -60,18 +60,18 @@ async def begin(org: str, kind: str, ref: str) -> dict:
     ref = str(ref).strip()
     now = datetime.now(timezone.utc)
     try:
-        await db[COLL].insert_one({"org_id": org, "kind": kind, "client_ref": ref,
+        await db.offline_intake.insert_one({"org_id": org, "kind": kind, "client_ref": ref,
                                    "state": "processing", "at": now, "created_at": now_iso()})
         return {"state": "new"}
     except DuplicateKeyError:
         pass
-    row = await db[COLL].find_one({"org_id": org, "kind": kind, "client_ref": ref})
+    row = await db.offline_intake.find_one({"org_id": org, "kind": kind, "client_ref": ref})
     if row and row.get("state") == "done":
         doc = await stored(org, kind, ref)
         logger.info("antrean idempoten: %s/%s sudah diterima", kind, ref)
         return {"state": "replay", "doc": doc, "summary": row.get("summary")}
     if row and _age_seconds(row.get("at")) > STALE_SECONDS:
-        await db[COLL].update_one({"_id": row["_id"]},
+        await db.offline_intake.update_one({"_id": row["_id"]},
                                   {"$set": {"at": now, "state": "processing"}})
         return {"state": "new"}
     return {"state": "inflight"}
@@ -82,7 +82,7 @@ async def commit(org: str, kind: str, ref: str, *, collection: str, doc_id: str,
     """Tandai penanda selesai + simpan ALAMAT dokumen hasilnya (bukan salinannya)."""
     if not ref:
         return
-    await db[COLL].update_one(
+    await db.offline_intake.update_one(
         {"org_id": org, "kind": kind, "client_ref": str(ref).strip()},
         {"$set": {"state": "done", "collection": collection, "doc_id": doc_id,
                   "summary": summary or {}, "done_at": now_iso()}}, upsert=True)
@@ -92,13 +92,13 @@ async def rollback(org: str, kind: str, ref: str) -> None:
     """Lepas kunci supaya kiriman yang DITOLAK bisa diperbaiki lalu dikirim ulang."""
     if not ref:
         return
-    await db[COLL].delete_one({"org_id": org, "kind": kind, "client_ref": str(ref).strip(),
+    await db.offline_intake.delete_one({"org_id": org, "kind": kind, "client_ref": str(ref).strip(),
                               "state": {"$ne": "done"}})
 
 
 async def stored(org: str, kind: str, ref: str):
     """Dokumen hasil kiriman lama (None bila penanda belum pernah selesai)."""
-    row = await db[COLL].find_one({"org_id": org, "kind": kind, "client_ref": str(ref).strip()},
+    row = await db.offline_intake.find_one({"org_id": org, "kind": kind, "client_ref": str(ref).strip()},
                                   {"_id": 0})
     if not row or row.get("state") != "done" or not row.get("collection"):
         return None

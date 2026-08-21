@@ -64,6 +64,15 @@ DERIVED_BY_DESIGN = {
     "files": "metadata file dibuat saat upload",
     "journal_entries": "jurnal otomatis gl_engine + jurnal manual POST /gl/journals",
     "lead_capture_events": "dedup log webhook capture",
+    # Fase 50B — buku penanda antrean perangkat. Ini catatan MEKANIS (bukan data bisnis):
+    # satu baris per `client_ref` supaya kiriman lapangan yang diulang tidak menjadi data
+    # kedua (absensi ganda = upah ganda). Ditulis `offline_intake.begin/commit/rollback` dari
+    # endpoint absensi, buku harian, punch list, klaim garansi & BAST. Sengaja TIDAK punya
+    # endpoint baca: yang dibaca manusia adalah dokumen hasilnya (absensi/klaim/BAST) dan
+    # antrean di perangkat; membuka buku penanda hanya menambah permukaan tanpa pembaca.
+    # Keunikannya dijaga index `uq_offline_intake_ref`; dibuktikan gate 40 (Q6a/Q6b/Q6c).
+    "offline_intake": ("buku penanda idempotensi antrean perangkat (Fase 50B) — ditulis "
+                       "offline_intake.begin/commit; kosong sampai ada kiriman ber-client_ref"),
     "material_txns": "mutasi stok dari transaksi/opname",
     "messages": "pesan WhatsApp masuk/keluar",
     "notifications": "notifikasi sistem",

@@ -47,9 +47,13 @@ GATES=(
 )
 
 fail=0
+# Log gate ditaruh di dalam repo (BUKAN /tmp): /tmp bisa dibersihkan sistem di tengah run
+# panjang, dan ringkasan "gate mana yang gagal" ikut hilang justru saat dibutuhkan.
+LOGDIR="memory/gatelogs"
+mkdir -p "$LOGDIR"
 declare -a results
 for g in "${GATES[@]}"; do
-  if python3 "scripts/$g" > "/tmp/gate_${g}.log" 2>&1; then
+  if python3 "scripts/$g" > "$LOGDIR/gate_${g}.log" 2>&1; then
     results+=("  PASS  $g")
   else
     results+=("  FAIL  $g")
@@ -64,8 +68,8 @@ echo "======================================================"
 if [ $fail -ne 0 ]; then
   echo "OVERALL: FAIL — detail gate yang gagal:"
   for g in "${GATES[@]}"; do
-    if ! grep -qE "PASSED|Total temuan perlu tindakan: 0" "/tmp/gate_${g}.log" 2>/dev/null; then
-      echo "----- $g -----"; tail -n 15 "/tmp/gate_${g}.log";
+    if ! grep -qE "PASSED|Total temuan perlu tindakan: 0" "$LOGDIR/gate_${g}.log" 2>/dev/null; then
+      echo "----- $g -----"; tail -n 15 "$LOGDIR/gate_${g}.log";
     fi
   done
   exit 1

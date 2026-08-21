@@ -140,8 +140,17 @@ def section_honesty(owner, catalog):
     # percaya pada apa yang dilaporkan metrik: bila ada lead tanpa riwayat tahap, metrik yang
     # bergantung pada riwayat WAJIB berstatus `sebagian` + menyebutkan berapa baris yang
     # dipakai. Menyembunyikan cakupan membuat angka terlihat final padahal tidak.
-    total_lead = db.leads.count_documents({})
-    berriwayat = db.leads.count_documents({"stage_history": {"$exists": True, "$ne": None}})
+    #
+    # PENTING (cacat perangkat uji yang ditemukan saat Fase 50): hitung ulang HARUS memakai
+    # saringan tanggal yang SAMA dengan metriknya. Metrik lead selalu dibatasi periode
+    # (`_leads(org, date_from, date_to)`), jadi membandingkannya dengan hitungan SELURUH
+    # koleksi membuat gate merah begitu ada satu lead di luar periode — mis. pembeli demo
+    # Fase 50 yang rumahnya diserahterimakan 400 hari lalu (leadnya tahun sebelumnya).
+    # Itu bukan ketidakjujuran metrik, melainkan pembanding yang salah.
+    in_range = {"created_at": {"$gte": FULL["date_from"], "$lte": f"{FULL['date_to']}T23:59:59"}}
+    total_lead = db.leads.count_documents(in_range)
+    berriwayat = db.leads.count_documents(
+        {**in_range, "stage_history": {"$exists": True, "$nin": [None, []]}})
     if total_lead and berriwayat < total_lead:
         for code in ("LED-02", "LED-04"):
             m = sample.get(code) or {}
@@ -150,7 +159,8 @@ def section_honesty(owner, catalog):
                   m.get("state") == "sebagian" and cov.get("rows") == berriwayat
                   and cov.get("total") == total_lead,
                   f"state={m.get('state')} coverage={cov}")
-    punya_respons = db.leads.count_documents({"response_time_minutes": {"$ne": None}})
+    punya_respons = db.leads.count_documents({**in_range,
+                                              "response_time_minutes": {"$ne": None}})
     if total_lead and punya_respons < total_lead:
         m = sample.get("LED-06") or {}
         cov = m.get("coverage") or {}
@@ -182,8 +192,9 @@ def section_tieout(owner, sample):
               for r in db.receipts.find({}, {"_id": 0, "amount": 1}))
     check("SLS-05 kas masuk = Σ kuitansi", sample["SLS-05"]["value"] == kas,
           f"{sample['SLS-05']['value']} vs {kas}")
-    leads = db.leads.count_documents({})
-    check("LED-01 lead masuk = jumlah lead di database",
+    leads = db.leads.count_documents(
+        {"created_at": {"$gte": FULL["date_from"], "$lte": f"{FULL['date_to']}T23:59:59"}})
+    check("LED-01 lead masuk = jumlah lead di database (periode yang sama)",
           sample["LED-01"]["value"] == leads, f"{sample['LED-01']['value']} vs {leads}")
     spend = sum(int(r.get("spend") or 0) for r in db.ad_spend.find({}, {"_id": 0, "spend": 1}))
     check("LED-09 CPL memakai biaya iklan yang sama dengan database",

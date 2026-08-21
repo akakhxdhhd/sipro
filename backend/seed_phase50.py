@@ -57,6 +57,7 @@ async def _buyer_and_payment(org: str, unit: dict, name: str, phone: str,
     """Lead + deal + customer + AR yang DILUNASI lewat mesin keuangan sungguhan."""
     deal = await db.deals.find_one({"org_id": org, "demo_marker": marker}, {"_id": 0})
     if deal:
+        await _repair_legacy(org, unit, deal, phone)
         return deal
     ts = f"{booked_on}T09:00:00+00:00"
     lead = {"id": new_id(), "org_id": org, "name": name, "phone": phone,
@@ -65,7 +66,12 @@ async def _buyer_and_payment(org: str, unit: dict, name: str, phone: str,
     await db.leads.insert_one(dict(lead))
     deal = {"id": new_id(), "org_id": org, "lead_id": lead["id"], "unit_id": unit["id"],
             "project_id": unit.get("project_id"), "assigned_to": "sales@sipro.co.id",
-            "status": "sold", "price": int(unit.get("price") or 0), "booking_fee": 5_000_000,
+            # `completed` = transaksi tuntas menurut Kamus Data `deal_status`
+            # (reserved/booked/completed/cancelled). Sempat tertulis "sold" — nilai di LUAR
+            # kamus, sehingga unitnya tampak "terjual tanpa transaksi" di gate invarian
+            # bisnis dan nilainya hilang dari metrik penjualan.
+            "status": "completed", "price": int(unit.get("price") or 0),
+            "booking_fee": 5_000_000,
             "reserved_at": ts, "reserved_until": ts, "booked_at": ts,
             "notes": ("DEMO Fase 50 — rumah lunas untuk mencoba serah terima (BAST) & masa "
                       "garansi."),
@@ -74,11 +80,23 @@ async def _buyer_and_payment(org: str, unit: dict, name: str, phone: str,
     await db.deals.insert_one(dict(deal))
     deal.pop("_id", None)
     cust = {"id": new_id(), "org_id": org, "lead_id": lead["id"], "deal_id": deal["id"],
-            "name": name, "phone": phone, "demo_batch": BATCH, "demo_marker": marker,
+            "name": name, "phone": phone,
+            # NIK adalah natural key pelanggan (dijaga audit duplikasi). Pelanggan demo tanpa
+            # NIK membuat dua baris bertabrakan pada kunci (org_id, nik=null) dan dilaporkan
+            # sebagai duplikat — pembeli sungguhan selalu punya KTP di berkas legalnya.
+            "nik": f"32760150{phone[-8:]}", "demo_batch": BATCH, "demo_marker": marker,
+            # `kyc_status` adalah TAHAP pelanggan (Kamus Data `kyc_status`) yang dipakai
+            # laporan umur tahap Fase 41. Pelanggan tanpa tahap tidak pernah ikut dihitung
+            # jam tahapnya — barisnya hilang dari laporan tanpa ada yang sadar.
+            "kyc_status": "verified", "kyc_files": [],
             "created_by": "seed", "created_at": ts, "updated_at": ts}
     await db.customers.insert_one(dict(cust))
     await db.units.update_one({"id": unit["id"], "org_id": org}, {"$set": {
-        "status": "sold", "sold_by_deal": deal["id"], "deal_id": deal["id"],
+        # `booked_by_deal` adalah tautan yang DIBACA seluruh aplikasi (site plan, build
+        # engine, invarian bisnis) untuk menemukan transaksi milik rumah; `sold_by_deal`
+        # saja membuat rumah tampak "terjual tanpa deal".
+        "status": "sold", "sold_by_deal": deal["id"], "booked_by_deal": deal["id"],
+        "deal_id": deal["id"],
         "lead_id": lead["id"], "customer_id": cust["id"], "payment_status": "lunas",
         "updated_at": ts}})
     await fe.create_ar_for_deal(deal, org_id=org, actor="seed")
@@ -93,6 +111,34 @@ async def _buyer_and_payment(org: str, unit: dict, name: str, phone: str,
     await db.ar_invoices.update_one({"org_id": org, "deal_id": deal["id"]},
                                     {"$set": {"demo_batch": BATCH, "demo_marker": marker}})
     return deal
+
+
+async def _repair_legacy(org: str, unit: dict, deal: dict, phone: str) -> None:
+    """Perbaiki baris demo Fase 50 yang lahir dari versi seed lama (idempoten).
+
+    Seed lama menulis `deals.status = "sold"` (di luar Kamus Data), tidak mengisi
+    `units.booked_by_deal`, dan membuat pelanggan tanpa NIK. Ketiganya membuat gate invarian
+    bisnis & audit duplikasi MERAH dengan benar. Karena seed bersifat idempoten lewat
+    `demo_marker`, baris lama tidak akan pernah diperbaiki sendiri — jadi diperbaiki di sini
+    alih-alih meminta orang menghapus database.
+    """
+    ts = now_iso()
+    if deal.get("status") not in ("reserved", "booked", "completed", "cancelled"):
+        await db.deals.update_one({"id": deal["id"], "org_id": org},
+                                  {"$set": {"status": "completed", "updated_at": ts}})
+        logger.info("Seed Fase 50: status deal demo %s dibetulkan ke 'completed'", deal["id"])
+    u = await db.units.find_one({"id": unit["id"], "org_id": org},
+                                {"_id": 0, "booked_by_deal": 1}) or {}
+    if not u.get("booked_by_deal"):
+        await db.units.update_one({"id": unit["id"], "org_id": org},
+                                  {"$set": {"booked_by_deal": deal["id"], "updated_at": ts}})
+    await db.customers.update_many(
+        {"org_id": org, "deal_id": deal["id"], "nik": None},
+        {"$set": {"nik": f"32760150{phone[-8:]}", "updated_at": ts}})
+    await db.customers.update_many(
+        {"org_id": org, "deal_id": deal["id"],
+         "kyc_status": {"$in": [None, ""]}},
+        {"$set": {"kyc_status": "verified", "kyc_files": [], "updated_at": ts}})
 
 
 async def _handover_inspection(org: str, unit: dict, marker: str) -> dict:
