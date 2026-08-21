@@ -3211,3 +3211,147 @@ agent_communication:
       * Ganti peran: tekan menu profil di kanan atas (data-testid=profile-menu) lalu
         data-testid=logout-button; setelah itu localStorage bersih dan login peran lain aman.
       * Faktur demo pembelinya SENGAJA tanpa NPWP (masa BULAN LALU) -> ekspor ditahan; itu bahan uji.
+
+#====================================================================================================
+# FASE 50 — PENUTUPAN (sesi lanjutan dari repo GitHub `jakaifudhshs/sipro`)
+#====================================================================================================
+
+backend:
+  - task: "Gate 39 — serah terima unit, masa garansi & klaim pasca-huni DIBUAT BERGIGI"
+    implemented: true
+    working: true
+    file: "scripts/verify_handover_warranty.py, backend/handover_engine.py, backend/warranty_engine.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "Gate ditulis pada sesi sebelumnya tetapi BELUM PERNAH DIJALANKAN. Saat dijalankan pertama kali: 40 pemeriksaan hijau, TETAPI satu pemeriksaan (H7f) menerima 200 ATAU 400 untuk pembatalan BAST — artinya tidak menguji apa pun."
+        -working: true
+        -agent: "main"
+        -comment: "H7f dipecah menjadi H7f..H7i: klaim garansi sengaja dibiarkan BERJALAN, pembatalan WAJIB ditolak 400 (menyebut 'klaim garansi berjalan'), dokumen wajib tetap berlaku, lalu setelah klaimnya ditolak beralasan pembatalan boleh dilakukan. GATE 39 HIJAU — 43 pemeriksaan."
+  - task: "Gate 40 — antrean perangkat terpadu (idempotensi client_ref) DIBUAT BERGIGI"
+    implemented: true
+    working: true
+    file: "scripts/verify_offline_queue.py, backend/offline_intake.py, backend/indexes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "Q6b hanya memeriksa 'ada index unik apa pun' pada koleksi offline_intake — lolos walau index yang ada bukan penjaga penanda antrean."
+        -working: true
+        -agent: "main"
+        -comment: "Q6b sekarang memeriksa KEY SPEC (org_id+kind+client_ref) dan Q6c menyisipkan penanda kembar langsung ke database (DuplicateKeyError WAJIB terjadi). GATE 40 HIJAU — 14 pemeriksaan."
+  - task: "Uji-mutasi Fase 50 (scripts/mutasi_50.py) — 37 mutasi, termasuk mutasi DATABASE"
+    implemented: true
+    working: true
+    file: "scripts/mutasi_50.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "36 mutasi kode (tahanan daftar periksa, izin terobosan, alasan <10 dua/tiga lapis, idempotensi BAST, masa garansi angka mati, klaim kedaluwarsa, bukti foto, pemisahan tugas, tie-out, honest-null, replay antrean di 3 lapis) + 1 mutasi DATABASE (index unik penanda dijatuhkan lalu dibangun ulang). HASIL: 37/37 TERTANGKAP, baseline hijau kembali. Run pertama dibunuh sistem di M28 dan meninggalkan warranty_engine.py TERMUTASI — dipulihkan dari commit baseline, lalu harness diberi --from=/--only= dan log dipindah ke memory/gatelogs (bukan /tmp)."
+  - task: "Cacat seed Fase 50: deal di luar Kamus Data, unit tanpa booked_by_deal, pelanggan tanpa NIK/kyc_status"
+    implemented: true
+    working: true
+    file: "backend/seed_phase50.py, backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "run_all_gates 40 gates: 6 MERAH. verify_business_invariants: 'Unit A-06: status sold tanpa deal terkait' (seed menulis deals.status='sold' — di luar SSOT reserved/booked/completed/cancelled — dan tidak mengisi units.booked_by_deal). forensic_audit HIGH: dua pelanggan demo ber-nik=null dilaporkan duplikat. verify_41: 2 pelanggan tanpa stage_entered_at."
+        -working: true
+        -agent: "main"
+        -comment: "Seed diperbaiki (status completed, booked_by_deal, NIK demo, kyc_status=verified) + _repair_legacy() idempoten untuk database yang sudah ter-seed versi lama. Ditemukan juga cacat lebih dalam: clock.reconcile() (jam tahap Fase 41) dipanggil tepat setelah seed Fase 40, sehingga SEMUA dokumen seed Fase 42..50 tak pernah punya stage_entered_at — ditambah sapuan terakhir setelah seluruh seed."
+  - task: "Cacat perangkat uji: gate menyimpan kamus sendiri & membandingkan periode yang salah"
+    implemented: true
+    working: true
+    file: "scripts/verify_masterplan.py, scripts/verify_analytics.py, scripts/audit_endpoint_sweep.py, scripts/forensic_audit.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "(1) verify_masterplan memakai daftar construction_status yang diketik ulang & ketinggalan 'ready_handover' -> sekarang membaca /api/reference. (2) verify_analytics membandingkan metrik lead (dibatasi periode) dengan hitungan SELURUH koleksi -> merah begitu ada lead di luar periode (pembeli demo yang rumahnya diserahkan 400 hari lalu); sekarang hitung ulang memakai saringan tanggal yang sama. (3) audit_endpoint_sweep belum punya resolver untuk /handover/check, /handover/warranty/unit, /handover/warranty/for-complaint (400 validasi-benar dihitung kerusakan). (4) forensic_audit menganggap offline_intake 'koleksi mati' karena ditulis lewat db[COLL] dinamis -> akses dibuat statis + didaftarkan DERIVED_BY_DESIGN."
+  - task: "Status pembangunan rumah yang sudah diserahterimakan"
+    implemented: true
+    working: true
+    file: "backend/handover_engine.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Kartu unit B-01 menampilkan 'Status jual: Sudah serah terima' bersamaan dengan 'Status bangun: Siap serah terima' — dua kenyataan yang bertabrakan. Penerbitan BAST kini menaikkan construction_status ke 'done' HANYA bila sebelumnya 'ready_handover'; bila diserahkan lewat terobosan saat pekerjaan belum selesai, statusnya dibiarkan apa adanya."
+
+frontend:
+  - task: "Pratinjau masa garansi SEBELUM BAST diterbitkan (data backend yang tak pernah tampil)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/handover/HandoverChecklistPanel.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "GET /handover/check MEMBAWA warranty_plan (masa garansi per bagian dari Pusat Konfigurasi) dan testId p50-warranty-plan-row sudah dicadangkan, tetapi tidak ada satu pun layar yang menampilkannya — janji ke pembeli tidak bisa dibaca sebelum kunci diserahkan."
+        -working: true
+        -agent: "main"
+        -comment: "Tabel 'Masa garansi yang akan berlaku' (7 baris, p50-warranty-plan-row) tampil di daftar periksa serah terima + kalimat bahwa lamanya diatur di Pusat Konfigurasi. Terbukti lewat screenshot pada unit A-06."
+  - task: "Tombol PDF BAST memakai jalur ber-token (bukan tautan mentah)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/handover/HandoverDocCard.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "PDF dibuka lewat <a href={API}/api/handover/{id}/pdf> — hanya berhasil selama kuki sesi ada; galatnya (401/404) tampil sebagai halaman JSON tanpa penjelasan, berbeda dengan seluruh aplikasi yang memakai downloadFile()."
+        -working: true
+        -agent: "main"
+        -comment: "Sekarang memakai downloadFile(..., {open:true}) + blobErrorDetail() sehingga galat dibaca jujur. Diuji: tab PDF terbuka (blob) tanpa toast galat pada unit B-01."
+  - task: "Penerbitan BAST dari layar aman diputar ulang (client_ref)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/handover/HandoverChecklistPanel.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        -working: true
+        -agent: "main"
+        -comment: "Penanda kiriman dibuat SEKALI per dialog (newRef()) dan dikirim sebagai client_ref, jadi klik ganda saat sinyal buruk tidak bergantung pada idempotensi mesin saja."
+
+agent_communication:
+    -agent: "main"
+    -message: |
+      FASE 50 DITUTUP — status terverifikasi di container ini (lingkungan dipulihkan dari repo
+      GitHub `jakaifudhshs/sipro`, DB baru, seed penuh Fase 16..50):
+      * python3 poc/poc_50.py                     -> PASS (81 pemeriksaan)
+      * python3 scripts/verify_handover_warranty.py -> GATE 39 HIJAU (43 pemeriksaan)
+      * python3 scripts/verify_offline_queue.py      -> GATE 40 HIJAU (14 pemeriksaan)
+      * python3 scripts/mutasi_50.py                -> 37 mutasi SEMUA TERTANGGAP, baseline hijau
+      * bash scripts/run_all_gates.sh               -> OVERALL PASS (40 gates)
+      TESTING AGENT — CATATAN PENTING:
+      * Unit uji Fase 50: A-06 = SIAP BAST (tombol "Terbitkan BAST" bisa dicoba),
+        B-01 = SUDAH BAST (BAST/2025/0001, 2 klaim: satu berjalan, satu ditolak lewat masa).
+        Tab: /units/{id}?tab=handover (testId unit-tab-handover / p50-handover-panel).
+      * Papan garansi: /construction tab "Garansi" (build-tab-warranty -> p50-warranty-board-panel).
+      * PEMISAHAN TUGAS yang SENGAJA (bukan bug): finance@ TIDAK melihat tombol "Batalkan BAST"
+        (butuh handover:cancel = finlead/owner); pm@ mendapat 403 bila mencoba MENEROBOS daftar
+        periksa; pengaju klaim (manager@/sales@) 403 di keputusan klaim; site@ 403 di pemeriksaan
+        mutu klaim; dan pemeriksa tidak boleh orang yang menyelesaikan perbaikan (400).
+      * Jangan uji kamera/GPS (agen tidak punya perangkat). Antrean offline diuji lewat
+        indikator layar, bukan mematikan jaringan.

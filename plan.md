@@ -184,3 +184,38 @@ Problem statement (verbatim):
 - `bash scripts/run_all_gates.sh` → **OVERALL PASS (40 gates)**.
 - `python3 scripts/mutasi_50.py` → semua mutasi **TERTANGKAP**.
 - Docs & peta kode ter-update; `test_result.md` mencerminkan status terbaru.
+
+---
+
+## 5) STATUS PENUTUPAN (diperbarui sesi lanjutan — repo `jakaifudhshs/sipro`)
+
+| Fase | Keadaan | Bukti |
+|---|---|---|
+| Phase 0 — sisa Fase 49 | **SELESAI** (sesi sebelumnya) | `mutasi_49.py` 24/24 tertangkap, 38 gates PASS |
+| Phase 1 — POC 50A | **SELESAI** | `poc/poc_50.py` PASS — 81 pemeriksaan |
+| Phase 2 — V1 50A (backend+UI) | **SELESAI** | `handover_engine`, `warranty_engine`, `handover_router`, `components/handover/*`, portal, pintu komplain CS |
+| Phase 3 — POC 50B | **SELESAI** | idempotensi `client_ref` dibuktikan gate 40 (Q1–Q8) |
+| Phase 4 — V1 50B (backend+UI) | **SELESAI** | `offline_intake.py`, `client_ref` di absensi/diary/punch/klaim/BAST, `offlineSync.KINDS`, antrean di spanduk global |
+| Phase 5 — Gates + Mutasi + Docs | **SELESAI** | Gate 39 (43) & 40 (14) HIJAU **dan bergigi**, `mutasi_50.py` 37/37 TERTANGKAP, `run_all_gates.sh` **OVERALL PASS (40 gates)**, docs 44 & 45, CODEBASE_MAP + test_result + test_credentials diperbarui |
+
+### Yang DIKERJAKAN pada sesi lanjutan ini (di luar rencana awal, karena ditemukan cacat nyata)
+1. Dua pemeriksaan gate baru ternyata **tidak bergigi** (H7f menerima 200 atau 400; Q6b
+   menerima index unik apa pun) — dipertajam menjadi H7f–H7i dan Q6b–Q6c.
+2. `seed_phase50` menulis `deals.status="sold"` (di luar Kamus Data), tidak mengisi
+   `units.booked_by_deal`, dan membuat pelanggan tanpa NIK/`kyc_status` → 3 gate merah.
+   Diperbaiki + `_repair_legacy()` idempoten.
+3. `clock.reconcile()` (jam tahap Fase 41) dipanggil terlalu dini di lifespan → seluruh
+   dokumen seed Fase 42..50 tanpa `stage_entered_at`. Ditambah sapuan terakhir.
+4. Tiga cacat perangkat uji: gate menyimpan kamus sendiri (`verify_masterplan`), pembanding
+   metrik salah periode (`verify_analytics`), endpoint Fase 50 belum punya resolver
+   (`audit_endpoint_sweep`); plus `offline_intake` tampak "koleksi mati" di audit forensik.
+5. Tiga cacat UI Fase 50A: `warranty_plan` tidak pernah ditampilkan, PDF BAST memakai tautan
+   mentah tanpa token, penerbitan BAST tanpa `client_ref`.
+6. Ketahanan perangkat uji: log gate & mutasi dipindah dari `/tmp` ke `memory/gatelogs`
+   (run mutasi pertama dibunuh sistem dan meninggalkan kode termutasi), dan `mutasi_50.py`
+   bisa dilanjutkan dengan `--from=`/`--only=`.
+
+### Berikutnya (usulan)
+* E2E multi-peran Fase 50 lewat `testing_agent_v3` (owner/finlead/finance/pm/site/sales/portal).
+* Fase 51: kandidat berikutnya — masa pemeliharaan & retensi subkon yang terhubung klaim
+  garansi, atau notifikasi WA otomatis untuk garansi yang HAMPIR HABIS.

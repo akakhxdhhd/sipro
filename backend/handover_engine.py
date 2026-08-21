@@ -336,9 +336,16 @@ async def issue(org: str, unit_id: str, actor: str, *, handed_over_at: str = Non
     }
     await db.unit_handovers.insert_one(dict(doc))
     doc.pop("_id", None)
-    await db.units.update_one({"id": unit_id, "org_id": org}, {"$set": {
-        "status": "handed_over", "handover_id": doc["id"], "handover_number": doc["number"],
-        "handed_over_at": day, "updated_at": ts}})
+    unit_set = {"status": "handed_over", "handover_id": doc["id"],
+                "handover_number": doc["number"], "handed_over_at": day, "updated_at": ts}
+    # Rumah yang SUDAH diserahkan tidak boleh terus berlabel "Siap serah terima": pembacanya
+    # melihat dua kenyataan yang bertabrakan di satu kartu. Status pembangunan dinaikkan ke
+    # `done` HANYA bila sebelumnya `ready_handover` — bila diserahkan lewat terobosan saat
+    # pekerjaan memang belum selesai, statusnya dibiarkan apa adanya (menuliskan "selesai"
+    # untuk pekerjaan yang belum selesai justru memalsukan keadaan).
+    if unit.get("construction_status") == "ready_handover":
+        unit_set["construction_status"] = "done"
+    await db.units.update_one({"id": unit_id, "org_id": org}, {"$set": unit_set})
     if deal:
         await db.deals.update_one({"id": deal["id"], "org_id": org}, {"$set": {
             "handover_id": doc["id"], "handed_over_at": day, "updated_at": ts}})
