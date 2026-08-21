@@ -226,6 +226,12 @@ def purge() -> dict:
     """Buang SELURUH bahan uji beserta turunannya (BAST, klaim, punch, tugas, berkas)."""
     units = _ids("units", {TAG: True})
     projects = _ids("projects", {TAG: True})
+    # Pembeli uji dikumpulkan LEBIH DULU: login portal (OTP) melahirkan baris `portal_users`
+    # yang menunjuk pelanggan itu. Kalau pelanggannya dibuang tanpa membuang akun portalnya,
+    # yang tertinggal adalah akun portal YATIM — dan audit forensik menandainya CRITICAL
+    # ("portal_users -> customer_id tidak ada di customers"). Cacat ini nyata: POC Fase 50
+    # sempat mengaku "bahan uji dibuang bersih" padahal meninggalkan satu akun portal.
+    customers = _ids("customers", {TAG: True})
     handovers = _ids("unit_handovers", {"$or": [{"unit_id": {"$in": units}},
                                                 {"project_id": {"$in": projects}}]})
     claims = _ids("warranty_claims", {"$or": [{"unit_id": {"$in": units}},
@@ -248,6 +254,10 @@ def purge() -> dict:
         "labor_attendance": db.labor_attendance.delete_many(
             {"project_id": {"$in": projects}}).deleted_count,
         "workers": db.workers.delete_many({TAG: True}).deleted_count,
+        "portal_users": db.portal_users.delete_many(
+            {"customer_id": {"$in": customers}}).deleted_count,
+        "portal_otps": db.portal_otps.delete_many(
+            {"customer_id": {"$in": customers}}).deleted_count,
         "customers": db.customers.delete_many({TAG: True}).deleted_count,
         "deals": db.deals.delete_many({TAG: True}).deleted_count,
         "leads": db.leads.delete_many({TAG: True}).deleted_count,
@@ -278,4 +288,11 @@ def orphans() -> dict:
             if not db.warranty_claims.count_documents({"id": p.get("warranty_claim_id")})),
         "unit_uji_tersisa": db.units.count_documents({TAG: True}),
         "proyek_uji_tersisa": db.projects.count_documents({TAG: True}),
+        # Akun portal YATIM = pelanggan uji sudah dibuang tetapi akun portalnya tertinggal.
+        # Dulu tidak diperiksa, sehingga POC bisa mengaku bersih sambil meninggalkan temuan
+        # CRITICAL di `forensic_audit.py` (integritas referensial portal_users → customers).
+        "akun_portal_yatim": sum(
+            1 for p in db.portal_users.find({}, {"_id": 0, "customer_id": 1})
+            if p.get("customer_id")
+            and not db.customers.count_documents({"id": p["customer_id"]})),
     }

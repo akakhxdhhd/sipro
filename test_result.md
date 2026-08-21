@@ -3355,3 +3355,18 @@ agent_communication:
         mutu klaim; dan pemeriksa tidak boleh orang yang menyelesaikan perbaikan (400).
       * Jangan uji kamera/GPS (agen tidak punya perangkat). Antrean offline diuji lewat
         indikator layar, bukan mematikan jaringan.
+
+  - task: "POC Fase 50 meninggalkan akun portal YATIM (ditemukan sesudah E2E)"
+    implemented: true
+    working: true
+    file: "scripts/_fixture50.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: false
+        -agent: "main"
+        -comment: "Setelah E2E + poc_50 dijalankan, forensic_audit MERAH: [CRITICAL] portal_users -> customer_id tidak ada di customers. Sebabnya login portal (OTP) di poc_50 melahirkan baris portal_users untuk pelanggan uji, sementara _fixture50.purge() hanya membuang pelanggannya. orphans() pun tidak memeriksanya, jadi POC mengaku 'bahan uji dibuang bersih'."
+        -working: true
+        -agent: "main"
+        -comment: "purge() membuang portal_users + portal_otps milik pelanggan uji (pola yang sudah dipakai _fixture47) dan orphans() menambahkan pemeriksaan 'akun_portal_yatim'. Dibuktikan: poc/poc_50.py PASS (81) dengan akun_portal_yatim=0, forensic_audit PASSED, run_all_gates OVERALL PASS (40 gates)."

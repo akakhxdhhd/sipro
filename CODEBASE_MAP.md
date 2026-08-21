@@ -1228,7 +1228,14 @@ Spec: `docs/v2/44_HANDOVER_WARRANTY_SPEC.md` (50A) + `docs/v2/45_OFFLINE_PWA_SPE
    sekarang memakai `downloadFile()` seperti seluruh aplikasi; (c) penerbitan BAST dari layar
    tidak mengirim `client_ref`, jadi klik ganda saat sinyal buruk bergantung pada idempotensi
    mesin saja — sekarang penanda dibuat sekali per dialog.
-10. **Perangkat uji rapuh:** `mutasi_50.py` & `run_all_gates.sh` menulis log ke `/tmp` yang
+10. **POC Fase 50 mengaku bersih padahal meninggalkan AKUN PORTAL YATIM.** Login portal (OTP)
+    melahirkan baris `portal_users` yang menunjuk pelanggan uji; `_fixture50.purge()` membuang
+    pelanggannya tetapi tidak akunnya, sehingga `forensic_audit.py` menemukan temuan
+    **CRITICAL** integritas referensial (`portal_users -> customer_id tidak ada`). Sekarang
+    purge membuang `portal_users`/`portal_otps` milik pelanggan uji (pola yang sudah dipakai
+    `_fixture47`) DAN `orphans()` MEMBUKTIKANNYA lewat pemeriksaan baru
+    `akun_portal_yatim` — perangkat uji tidak boleh hanya berjanji bersih, ia harus membuktikan.
+11. **Perangkat uji rapuh:** `mutasi_50.py` & `run_all_gates.sh` menulis log ke `/tmp` yang
     bisa dibersihkan sistem di tengah run panjang (run pertama mati di M28 dan meninggalkan
     kode TERMUTASI). Log sekarang di `memory/gatelogs/`, dan mutasi bisa dilanjutkan dengan
     `--from=`.
