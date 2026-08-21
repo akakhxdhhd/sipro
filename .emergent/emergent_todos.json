@@ -4,7 +4,7 @@
     "status": "completed"
   },
   {
-    "content": "Phase 5a: Gate 39 GREEN (43 checks, H7f/H7g hardened)",
+    "content": "Phase 5a: Gate 39 GREEN (43 checks, H7f–H7i hardened)",
     "status": "completed"
   },
   {
@@ -16,23 +16,23 @@
     "status": "completed"
   },
   {
-    "content": "Phase 5d: 40 gates registered + OVERALL PASS; fixed 6 failing gates (seed/gate defects)",
+    "content": "Phase 5d: 40 gates registered + OVERALL PASS (twice, after every fix)",
     "status": "completed"
   },
   {
-    "content": "Phase 5e: Fase 50 frontend gaps fixed; visual verification of handover tab/board/portal pending",
-    "status": "in_progress"
+    "content": "Phase 5e: Fase 50 UI gaps fixed + visually verified (warranty plan, authed PDF, replay-safe issue)",
+    "status": "completed"
   },
   {
-    "content": "Phase 5f: Docs 44+45 + CODEBASE_MAP + test_credentials done; test_result.md & plan.md remaining",
-    "status": "in_progress"
+    "content": "Phase 5f: Docs 44+45, CODEBASE_MAP, test_result, plan, test_credentials updated",
+    "status": "completed"
   },
   {
-    "content": "Phase 5g: E2E multi-role testing via testing_agent_v3 + fix all findings",
-    "status": "pending"
+    "content": "Phase 5g: E2E multi-role via testing_agent_v3 — 12/12 user stories PASS; findings triaged, orphan-portal defect fixed",
+    "status": "completed"
   },
   {
-    "content": "Phase 5h: Final local commit of Fase 50 closure",
-    "status": "pending"
+    "content": "Phase 5h: Local commits done (4 commits, working tree clean)",
+    "status": "completed"
   }
 ]
