@@ -50,7 +50,8 @@ async def update_agent(agent_id: str, payload: AgentUpdate,
 
 
 @router.get("/fees")
-async def list_fees(status: str = None, agent_id: str = None, skip: int = 0, limit: int = 100,
+async def list_fees(status: str = None, agent_id: str = None, lead_id: str = None,
+                    deal_id: str = None, skip: int = 0, limit: int = 100,
                     user: dict = Depends(require_permission("marketing_fee", "view"))):
     skip, limit = parse_pagination(skip, limit)
     q = {"org_id": user.get("org_id", ORG_ID)}
@@ -60,6 +61,13 @@ async def list_fees(status: str = None, agent_id: str = None, skip: int = 0, lim
         q["status"] = status
     if agent_id:
         q["agent_id"] = agent_id
+    # Saringan per LEAD & per TRANSAKSI (dipakai profil lead & pelanggan). Tanpa ini layar
+    # harus mengunduh seluruh fee organisasi lalu menyaringnya sendiri di browser — mahal,
+    # dan bagi peran ber-row-scope justru menampilkan pekerjaan orang lain.
+    if lead_id:
+        q["lead_id"] = lead_id
+    if deal_id:
+        q["deal_id"] = deal_id
     total = await db.marketing_fees.count_documents(q)
     rows = await db.marketing_fees.find(q, {"_id": 0}).sort("created_at", -1) \
         .skip(skip).limit(limit).to_list(limit)

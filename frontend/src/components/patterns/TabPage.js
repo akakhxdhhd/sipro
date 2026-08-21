@@ -13,8 +13,14 @@ import { TABPAGE } from "@/constants/testIds";
  * terasa rusak.
  *
  * tabs: [{ key, label, icon?, badge?, content, soon? }]
- *   `soon: "Fase 43"` → tab tetap TERLIHAT (supaya pemakai tahu peta jalannya) tetapi
- *   isinya menjelaskan dengan jujur bahwa datanya belum ada, bukan tabel kosong palsu.
+ *   `soon: "belum masuk rencana kerja berjalan"` → tab tetap TERLIHAT (supaya pemakai tahu
+ *   peta jalannya) tetapi isinya menjelaskan dengan jujur bahwa datanya belum ada, bukan
+ *   tabel kosong palsu.
+ *
+ *   ATURAN PENTING (pelajaran nyata): `soon` TIDAK BOLEH berisi NOMOR FASE. Urutan
+ *   pengerjaan pernah berubah, sehingga tab yang berjanji "dijadwalkan Fase 43" masih mati
+ *   lama setelah Fase 43 selesai — pemakai membaca janji yang tidak pernah datang. Tulis
+ *   NAMA pekerjaannya ("kontrak formal & rincian biaya per komponen"), bukan nomornya.
  */
 /**
  * Penanda tab, dari LUAR ke DALAM. `hub` dipakai halaman hub (mis. `/build`), `tab` dipakai
@@ -89,7 +95,7 @@ export default function TabPage({ tabs = [], header = null, paramKey = "tab", te
           <div data-testid={TABPAGE.soon}
             className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
             <p className="flex items-center gap-2 font-medium">
-              <Clock className="h-4 w-4" /> Belum aktif — dijadwalkan {active.soon}
+              <Clock className="h-4 w-4" /> Belum aktif — {active.soon}
             </p>
             <p className="mt-1.5">
               {active.soonNote || `Data untuk “${active.label}” belum dibuat sistem, jadi tab ini `

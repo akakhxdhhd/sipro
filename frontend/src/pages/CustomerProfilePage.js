@@ -13,6 +13,8 @@ import DocChecklist from "@/components/patterns/DocChecklist";
 import TimelineFeed from "@/components/patterns/TimelineFeed";
 import CustomerSummaryTab from "@/components/customers/CustomerSummaryTab";
 import CustomerFinancingTab from "@/components/customers/CustomerFinancingTab";
+import CustomerContractTab from "@/components/customers/CustomerContractTab";
+import CustomerPaymentPlanTab from "@/components/customers/CustomerPaymentPlanTab";
 import {
   CustomerUnitsTab, CustomerComplaintsTab,
 } from "@/components/customers/CustomerRelatedTabs";
@@ -23,9 +25,13 @@ import { CUSTPROFILE } from "@/constants/testIds";
 /**
  * CustomerProfilePage (`/customers/:id`) — HALAMAN kanonik pelanggan (US-40-2).
  *
- * Tab yang datanya baru dibuat pada fase mendatang TETAP TERLIHAT dengan keterangan jujur
- * (“belum aktif — Fase 43/44”) sesuai keputusan owner: pemakai berhak tahu peta jalannya,
- * tetapi TIDAK boleh disuguhi tabel kosong yang seolah-olah sudah berfungsi.
+ * Tab “Kontrak & Harga” dan “Rencana Bayar” SEMPAT MATI dengan label “dijadwalkan Fase 43”.
+ * Nomor itu sudah lewat (urutan pengerjaan nyata berbeda dari roadmap awal — lihat tabel
+ * pemetaan di docs/v2/34_ROADMAP_EKSEKUSI.md), sementara datanya sebagian besar SUDAH ada:
+ * penawaran (harga unit + add-on + diskon + skema) dan jadwal tagihan AR beserta
+ * penerimaannya. Sekarang kedua tab menampilkan data nyata itu dan menyebut dengan jelas
+ * bagian yang memang belum dibangun (kontrak formal + rincian biaya per komponen, toleransi
+ * & mesin refund) — bukan lagi janji bernomor fase yang bisa kadaluarsa.
  */
 export default function CustomerProfilePage() {
   const { id } = useParams();
@@ -125,18 +131,12 @@ export default function CustomerProfilePage() {
           content: <CustomerSummaryTab customer={cust} onChanged={load} />,
         },
         {
-          key: "kontrak", label: "Kontrak & Harga", icon: ScrollText, soon: "Fase 43",
-          soonNote: "Kontrak + rincian harga per komponen (BPHTB, notaris, bank, hook, "
-            + "kelebihan tanah, promo) baru menjadi data pada Fase 43 — sampai itu tidak ada "
-            + "angka kontrak yang bisa ditampilkan tanpa mengarang.",
-          content: null,
+          key: "kontrak", label: "Kontrak & Harga", icon: ScrollText,
+          content: <CustomerContractTab customer={cust} />,
         },
         {
-          key: "bayar", label: "Rencana Bayar", icon: Receipt, soon: "Fase 43",
-          soonNote: "Rencana bayar per termin, jatuh tempo, tunggakan, dan toleransi dibangun "
-            + "pada Fase 43 bersama kontrak. Pembayaran yang sudah tercatat hari ini bisa "
-            + "dilihat di menu Keuangan.",
-          content: null,
+          key: "bayar", label: "Rencana Bayar", icon: Receipt,
+          content: <CustomerPaymentPlanTab customer={cust} />,
         },
         {
           key: "kpr", label: "KPR", icon: CreditCard, badge: fins.length || undefined,

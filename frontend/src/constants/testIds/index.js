@@ -74,3 +74,7 @@ export * from './p49';
 // Fase 50 — serah terima unit (BAST), masa garansi per bagian, klaim garansi pasca-huni,
 // dan antrean perangkat terpadu (absensi + buku harian + punch list + foto)
 export * from './p50';
+// Tab yang DIAKTIFKAN setelah audit peta jalan: Kontrak & Harga + Rencana Bayar (profil
+// pelanggan) dan Fee Mitra (profil lead) — sebelumnya mati dengan label nomor fase yang
+// sudah lewat, padahal datanya sudah ada.
+export * from './crmContract';

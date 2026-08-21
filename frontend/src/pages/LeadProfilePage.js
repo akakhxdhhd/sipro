@@ -17,6 +17,7 @@ import LeadSummaryTab from "@/components/leads/LeadSummaryTab";
 import LeadTimelineTab from "@/components/leads/LeadTimelineTab";
 import LeadSurveyTab from "@/components/leads/LeadSurveyTab";
 import LeadUnitsTab from "@/components/leads/LeadUnitsTab";
+import LeadPartnerFeeTab from "@/components/leads/LeadPartnerFeeTab";
 import QuotationsTab from "@/components/quotations/QuotationsTab";
 import { LoadingCards, ErrorState } from "@/components/patterns/StateViews";
 import { useReference } from "@/context/ReferenceContext";
@@ -183,7 +184,8 @@ export default function LeadProfilePage() {
               <p className="font-medium">Pra-skrining BI/SLIK ada di tab Ringkasan.</p>
               <p className="mt-1 text-muted-foreground">
                 Panel SLIK menempel pada gerbang tahap (bukti iDeb wajib sebelum Booking).
-                Menu BI Checking mandiri dijadwalkan Fase 44.
+                Menu BI Checking mandiri (pra-skrining sebelum booking, di luar urutan tahap)
+                belum dibangun.
               </p>
               <Button className="mt-3" size="sm" variant="outline"
                 onClick={() => goTab("ringkasan")}>Buka gerbang tahap</Button>
@@ -191,10 +193,8 @@ export default function LeadProfilePage() {
           ),
         },
         {
-          key: "mitra", label: "Fee Mitra", icon: ClipboardList, soon: "Fase 45",
-          soonNote: "Aturan fee mitra (7 basis perhitungan, split, pajak) baru dibuat pada "
-            + "Fase 45 — sebelum itu tidak ada angka fee yang bisa ditampilkan tanpa mengarang.",
-          content: null,
+          key: "mitra", label: "Fee Mitra", icon: ClipboardList,
+          content: <LeadPartnerFeeTab leadId={id} lead={lead} />,
         },
       ]} />
     </div>

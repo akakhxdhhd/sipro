@@ -32,7 +32,8 @@ function Field({ label, value }) {
  *
  * Catatan jujur yang dipertahankan dari fase sebelumnya: berkas di sini BERBEDA dari
  * checklist “Dokumen & Legal” — lampiran KYC tidak punya status verifikasi/penolakan.
- * Konsolidasi dua sistem dokumen pelanggan dijadwalkan Fase 43 (docs/v2/26).
+ * Konsolidasi dua sistem dokumen pelanggan (docs/v2/26) BELUM dikerjakan; keduanya sengaja
+ * dibedakan di layar supaya tidak ada yang menyangka lampiran KYC sudah terverifikasi.
  */
 export default function CustomerSummaryTab({ customer, onChanged }) {
   const [docType, setDocType] = useState("ktp");

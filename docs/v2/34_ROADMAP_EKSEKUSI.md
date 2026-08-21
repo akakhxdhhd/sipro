@@ -11,6 +11,44 @@
 > `/leads/:id`. Catatan untuk Fase 41: **INV-07** (gerbang tahap oleh dokumen wajib) sengaja
 > BELUM ditegakkan di Fase 39b — itu pekerjaan Fase 41/42 bersama tahap `spr`.
 
+## PEMETAAN NOMOR FASE — RENCANA vs YANG BENAR-BENAR DIKERJAKAN (WAJIB DIBACA)
+
+> **Kenapa bagian ini ada.** Nomor fase di dokumen ini adalah RENCANA. Urutan pengerjaan
+> nyata berubah (permintaan owner mendahulukan uang masuk, pengadaan, penutupan buku, serah
+> terima). Akibatnya nomor yang sama menunjuk pekerjaan yang berbeda, dan **layar yang
+> menulis “dijadwalkan Fase 43” tetap mati lama setelah Fase 43 selesai** — pemakai membaca
+> janji yang tidak pernah datang. Cacat itu ditemukan pemakai pada tab *Kontrak & Harga*.
+>
+> **Aturan sejak sekarang:** layar TIDAK BOLEH menyebut nomor fase untuk hal yang belum ada.
+> Tulis NAMA pekerjaannya (lihat `TabPage`: prop `soon` berisi nama, bukan nomor).
+
+| Rencana (dokumen ini) | Kenyataan di kode | Bukti |
+|---|---|---|
+| F39 Fondasi Data & Wiring | ✅ Fase 39 + 39b | `verify_masterplan.py`, `verify_39b.py` |
+| F40 IA & Design System V2 | ✅ Fase 40 | `verify_ia_v2.py` |
+| F41 CRM Lead V2 | ✅ sebagian: profil lead kanonik + jam tahap/SLA (Fase 41) + gerbang tahap berbukti (Fase 29b). Gate `verify_crm_v2.py` tidak pernah dibuat | `verify_41.py` |
+| F42 Reservasi/SPR + Generator Dokumen | ⚠️ generator dokumen ADA (template → finalize → tanda tangan → PDF); **modul reservasi/SPR terpisah belum** | `documents_router.py` |
+| **F43 Customer, Kontrak & Rencana Bayar** | ❌ **BELUM** — `contracts`, `price_breakdown` per komponen, `payment_plans` 3 skema, toleransi tunggakan, mesin pembatalan/refund berjurnal, tahap legal PPJB/AJB/sertifikat. **Yang SUDAH ada dan kini ditampilkan:** penawaran (harga unit + add-on + diskon + skema) di tab *Kontrak & Harga*, serta jadwal termin AR + penerimaan + tunggakan di tab *Rencana Bayar* | `CustomerContractTab.js`, `CustomerPaymentPlanTab.js` |
+| **F44 Alur KPR + BI Checking** | ❌ **BELUM** — `kpr_applications` bertahap (berkas → bank → appraisal → SP3K → akad → pencairan) + gerbang bukti + refund 50%; menu BI Checking mandiri. **Yang ada:** pengajuan KPR + SLIK + pencairan (`financing_router`) & simulasi KPR | `financing_router.py` |
+| F45 Mitra & Fee | ✅ dikerjakan sebagai **Fase 42** | `verify_partner.py` |
+| **F46 Agenda & Survey V2 + Inbox WA V2** | ⚠️ dasar ADA (agenda/appointment, inbox WA + SLA + NBA); **V2 belum**: kalender besar bulan/minggu/hari, alasan reschedule ber-SSOT + follow-up WA otomatis, form survei berversi, inbox virtualized + aksi massal | `leads_router.py`, `inbox_router.py` |
+| F47 Marketing, Kampanye & Biaya Iklan | ✅ dikerjakan sebagai **Fase 43** | `verify_ads.py` |
+| F48 Target & Budget/RAB | ✅ dikerjakan sebagai **Fase 45** | `verify_budget_target.py` |
+| F49 Analytics & BI | ✅ dikerjakan sebagai **Fase 44** | `verify_analytics.py` |
+| F50 Konsolidasi Proyek & Konstruksi | ✅ dikerjakan sebagai **Fase 46** | `verify_build_hub.py` |
+| F51 Kesiapan Pembayaran (opsional) | ❌ belum — butuh kredensial kanal pembayaran yang nyata | — |
+
+**Dikerjakan DI LUAR roadmap ini (permintaan owner, semua bergate):**
+
+| Fase nyata | Isi | Gate |
+|---|---|---|
+| Fase 47 | Uang masuk terbukti (rekonsiliasi bank, bukti transfer portal) + absensi & upah harian | gate 31–33 |
+| Fase 48 | Pengadaan & subkon lanjutan (vendor, 3-way match, uang muka, retensi, stok) | gate 34–36 |
+| Fase 49 | Penutupan buku (bulan & tahun), paket laporan owner, e-Faktur & e-Bupot | gate 37–38 |
+| Fase 50 | Serah terima unit (BAST) + masa garansi + klaim pasca-huni + antrean perangkat terpadu | gate 39–40 |
+
+---
+
 ## Ringkasan
 
 | Fase | Nama | Ukuran | Dokumen acuan | Gate baru |

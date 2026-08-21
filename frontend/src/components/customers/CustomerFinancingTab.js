@@ -13,8 +13,12 @@ import { CUSTOMERS } from "@/constants/testIds";
 
 /**
  * CustomerFinancingTab — pengajuan KPR: plafon, DP, tenor, SLIK, pencairan.
- * Alur KPR bertahap (berkas → bank → SP3K → akad → pencairan) dijadwalkan Fase 44;
- * yang ada di sini adalah data pembiayaan yang MEMANG sudah dikelola sistem sekarang.
+ *
+ * Yang ADA di sini: pengajuan KPR beserta hasil SLIK dan pencairannya — data pembiayaan yang
+ * memang sudah dikelola sistem. Yang BELUM dibangun: alur bertahap berkas → bank → appraisal
+ * → SP3K → akad → pencairan lengkap dengan gerbang bukti per tahap dan usulan refund 50%
+ * bila bank menolak. Sengaja TIDAK disebut dengan nomor fase: urutan pengerjaan pernah
+ * berubah dan janji bernomor jadi menyesatkan.
  */
 export default function CustomerFinancingTab({ customer, financings = [], onChanged }) {
   const [addOpen, setAddOpen] = useState(false);

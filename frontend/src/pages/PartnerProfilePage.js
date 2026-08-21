@@ -12,6 +12,7 @@ import MoneyText from "@/components/patterns/MoneyText";
 import KpiCard from "@/components/patterns/KpiCard";
 import AgingCell from "@/components/patterns/AgingCell";
 import EmptyState from "@/components/patterns/EmptyState";
+import DocChecklist from "@/components/patterns/DocChecklist";
 import { ErrorState, LoadingCards } from "@/components/patterns/StateViews";
 import FeeRulesTab from "@/components/partners/FeeRulesTab";
 import PartnerFormDialog from "@/components/partners/PartnerFormDialog";
@@ -298,10 +299,17 @@ export default function PartnerProfilePage() {
             </div>
           ) },
         { key: "dokumen", label: "Dokumen Onboarding", icon: FileText,
-          soon: "Fase 43",
           content: (
-            <EmptyState icon={FileText} title="Checklist dokumen mitra menyusul (Fase 43)"
-              description="Kontrak & lampirannya sudah tercatat pada tab Profil; checklist dokumen onboarding mitra (KTP/NPWP/PKS bertanda tangan) mengikuti mesin dokumen syarat pada fase berikutnya." />
+            <div className="space-y-3">
+              <p className="rounded-xl border bg-card p-3 text-[13px] text-muted-foreground">
+                Checklist dokumen onboarding mitra (KTP/NPWP/PKS bertanda tangan) memakai
+                mesin dokumen syarat yang sama dengan lead & pelanggan. Master syaratnya
+                diatur admin di <b>Dokumen &amp; Perizinan → Master Dokumen Syarat</b> dengan
+                objek <b>mitra</b>; bila belum ada syarat yang berlaku, daftar di bawah
+                mengatakannya apa adanya.
+              </p>
+              <DocChecklist entityType="partner" entityId={id} onChanged={load} />
+            </div>
           ) },
       ]} />
 
